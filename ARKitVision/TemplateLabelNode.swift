@@ -16,6 +16,7 @@ class TemplateLabelNode: SKReferenceNode {
         self.text = text
         // Force call to designated init(fileNamed: String?), not convenience init(fileNamed: String)
         super.init(fileNamed: Optional.some("LabelScene"))
+        setScale(0.2)
     }
     
     required init?(coder aDecoder: NSCoder) {

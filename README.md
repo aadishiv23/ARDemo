@@ -1,21 +1,16 @@
-# Using Vision in Real Time with ARKit
+# Recognizing and Labeling Arbitrary Objects
 
-Manage Vision resources for efficient execution of a Core ML image classifier, and use SpriteKit to display image classifier output in AR.
+Create anchors that track objects you recognize in the camera feed, using a custom optical-recognition algorithm.    
 
 ## Overview
 
-This sample app runs an [ARKit][0] world-tracking session with content displayed in a SpriteKit view. The app uses the [Vision][1] framework to pass camera images to a [Core ML][2] classifier model, displaying a label in the corner of the screen to indicate whether the classifier recognizes anything in view of the camera. After the classifier produces a label for the image, the user can tap the screen to place that text in AR world space. 
-
-- Note: The Core ML image classifier model doesn't recognize and locate the 3D positions of objects. (In fact, the `Inceptionv3` model attempts only to identify an entire scene.) When the user taps the screen, the app adds a label at a real-world position corresponding to the tapped point. How closely a label appears to relate to the object it names depends on where the user taps.
-
+This sample app parses the camera feed, using the [Vision][1] framework with a [Core ML][2] model that recognizes regular desktop items. The app displays a label onscreen that indicates when it recognizes an item. You then tap the screen to place a textual annotation in the physical environment that's labeled with the name of the recognized object. Because the Core ML model used by this app doesn't tell you where the object lies within an image, label placement relative to the object depends on where you tap.  
 
 [0]:https://developer.apple.com/documentation/arkit
 [1]:https://developer.apple.com/documentation/vision
 [2]:https://developer.apple.com/documentation/coreml
 
-## Getting Started
-
-ARKit requires iOS 11.0 and a device with an A9 (or later) processor. ARKit is not available in iOS Simulator. Building the sample code requires Xcode 9.0 or later.
+- Note: ARKit requires an iOS device with an A9 or later processor. ARKit is not available in iOS Simulator. 
 
 ## Implement the Vision/Core ML Image Classifier
 
@@ -72,7 +67,7 @@ visionQueue.async {
 ```
 [View in Source](x-source-tag://ClassifyCurrentImage)
 
-- Important: Making sure only one buffer is being processed at a time ensures good performance. The camera recycles a finite pool of pixel buffers, so retaining too many buffers for processing could starve the camera and shut down the capture session. Passing multiple buffers to Vision for processing would slow down processing of each image, adding latency and reducing the amount of CPU and GPU overhead for rendering AR visualizations.
+- Important: Limit your processing to one buffer at a time for performance. The camera recycles a finite pool of pixel buffers, so retaining too many buffers for processing could starve the camera and shut down the capture session. Passing multiple buffers to Vision for processing would slow down processing of each image, adding latency and reducing the amount of CPU and GPU overhead for rendering AR visualizations.
 
 In addition, the sample app enables the [`usesCPUOnly`][7] setting for its Vision request, freeing the GPU for use in rendering.
 
