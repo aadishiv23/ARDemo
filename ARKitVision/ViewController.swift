@@ -14,6 +14,23 @@ class ViewController: UIViewController, UIGestureRecognizerDelegate, ARSKViewDel
     
     @IBOutlet weak var sceneView: ARSKView!
     
+    /// The ML model to be used for recognition of arbitrary objects.
+    private var _inceptionv3Model: Inceptionv3!
+    private var inceptionv3Model: Inceptionv3! {
+        get {
+            if let model = _inceptionv3Model { return model }
+            _inceptionv3Model = {
+                do {
+                    let configuration = MLModelConfiguration()
+                    return try Inceptionv3(configuration: configuration)
+                } catch {
+                    fatalError("Couldn't create Inceptionv3 due to: \(error)")
+                }
+            }()
+            return _inceptionv3Model
+        }
+    }
+    
     // The view controller that displays the status and "restart experience" UI.
     private lazy var statusViewController: StatusViewController = {
         return children.lazy.compactMap({ $0 as? StatusViewController }).first!
@@ -77,7 +94,7 @@ class ViewController: UIViewController, UIGestureRecognizerDelegate, ARSKViewDel
     private lazy var classificationRequest: VNCoreMLRequest = {
         do {
             // Instantiate the model from its generated Swift class.
-            let model = try VNCoreMLModel(for: Inceptionv3().model)
+            let model = try VNCoreMLModel(for: inceptionv3Model.model)
             let request = VNCoreMLRequest(model: model, completionHandler: { [weak self] request, error in
                 self?.processClassifications(for: request, error: error)
             })
