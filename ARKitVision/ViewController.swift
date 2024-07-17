@@ -19,8 +19,10 @@ class ViewController: UIViewController, DataScannerViewControllerDelegate, ARSes
     private func setupUI() {
         // Setup AR View
         arView = ARSCNView(frame: view.bounds)
-        arView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.addSubview(arView!)
+       arView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+       arView?.showsStatistics = true
+       arView?.debugOptions = [ARSCNDebugOptions.showFeaturePoints, ARSCNDebugOptions.showWorldOrigin]
+       view.addSubview(arView!)
 
         // Setup Scanned Text Label
         scannedTextLabel = UILabel()
@@ -57,9 +59,11 @@ class ViewController: UIViewController, DataScannerViewControllerDelegate, ARSes
         }
 
         let configuration = ARWorldTrackingConfiguration()
+        configuration.planeDetection = [.horizontal, .vertical] // Detect horizontal and vertical planes
         arView?.session.delegate = self
         arView?.session.run(configuration)
     }
+
 
     @objc private func startScanning() {
         guard DataScannerViewController.isSupported && DataScannerViewController.isAvailable else {
@@ -67,7 +71,7 @@ class ViewController: UIViewController, DataScannerViewControllerDelegate, ARSes
             return
         }
 
-        let dataScanner = DataScannerViewController(recognizedDataTypes: [.text()], qualityLevel: .fast, recognizesMultipleItems: false, isPinchToZoomEnabled: false)
+        let dataScanner = DataScannerViewController(recognizedDataTypes: [.text()], qualityLevel: .fast, recognizesMultipleItems: true, isPinchToZoomEnabled: true, isHighlightingEnabled: true)
         dataScanner.delegate = self
 
         present(dataScanner, animated: true) {
@@ -95,7 +99,7 @@ class ViewController: UIViewController, DataScannerViewControllerDelegate, ARSes
     // MARK: - AR Tracking
 
     private func addTextNode() {
-        guard let selectedText = selectedText else { return }
+        guard let selectedText = selectedText, let arView = arView else { return }
 
         // Create a plane with a gray material
         let plane = SCNPlane(width: 0.1, height: 0.05)
@@ -114,24 +118,32 @@ class ViewController: UIViewController, DataScannerViewControllerDelegate, ARSes
         parentNode.addChildNode(textNode)
 
         // Position the parent node in front of the camera
-        if let cameraTransform = arView?.session.currentFrame?.camera.transform {
-            parentNode.simdTransform = matrix_multiply(cameraTransform, matrix_identity_float4x4.translated(by: SIMD3<Float>(0, 0, -0.5)))
+        if let cameraTransform = arView.session.currentFrame?.camera.transform {
+            let anchorTransform = matrix_multiply(cameraTransform, matrix_identity_float4x4.translated(by: SIMD3<Float>(0, 0, -0.5)))
+            let anchor = ARAnchor(transform: anchorTransform)
+            arView.session.add(anchor: anchor)
+            arView.scene.rootNode.addChildNode(parentNode)
+            parentNode.simdTransform = anchorTransform
+            self.textNode = parentNode
+            parentNode.name = anchor.identifier.uuidString
         }
-
-        arView?.scene.rootNode.addChildNode(parentNode)
-        self.textNode = parentNode
     }
+
 
     // MARK: - ARSessionDelegate
 
-    func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        // Update the position of the text node to follow the object
-        guard let textNode = textNode,
-              let cameraTransform = arView?.session.currentFrame?.camera.transform else { return }
+    func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+        guard let textNode = textNode, let arView = arView else { return }
 
-        // Adjust the position based on your requirement
-        textNode.simdTransform = matrix_multiply(cameraTransform, matrix_identity_float4x4.translated(by: SIMD3<Float>(0, 0, -0.5)))
+        for anchor in anchors {
+            if anchor.identifier.uuidString == textNode.name {
+                if let node = arView.node(for: anchor) {
+                    textNode.simdTransform = node.simdTransform
+                }
+            }
+        }
     }
+
 }
 
 extension matrix_float4x4 {
